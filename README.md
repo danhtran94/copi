@@ -13,7 +13,7 @@ Please don't use this lib in any production product
 
 [+] Copy from map to map
 
-[+] Copy with anotation tag `copi:""`
+[+] Copy with annotation tag `copi:""`
 
 ## Get ideas & some util funcs from
 jinzhu/copier
