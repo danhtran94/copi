@@ -15,3 +15,6 @@ Please don't use this lib in any production product
 
 [+] Copy with anotation tag `copi:""`
 
+## Get ideas & some util funcs from
+jinzhu/copier
+
