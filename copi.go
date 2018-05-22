@@ -41,85 +41,85 @@ func copy(from, to reflect.Value) error {
 			to.Set(from)
 			return nil
 		}
-	}
 
-	if from.Type().ConvertibleTo(to.Type()) {
-		to.Set(from.Convert(to.Type()))
-		return nil
-	}
-
-	switch to.Type().Kind() {
-	case reflect.Struct:
-		for _, dstFieldMeta := range deepFields(to.Type()) {
-			dstFieldVal := to.FieldByName(dstFieldMeta.Name)
-
-			log.Debug("struct:field:", dstFieldMeta.Name, ":", dstFieldMeta.Anonymous)
-
-			if !dstFieldVal.CanSet() {
-				return nil
-			}
-
-			if from.Type().Kind() == reflect.Struct {
-				var srcFieldVal reflect.Value
-				if byTag := dstFieldMeta.Tag.Get("copi"); byTag != "" {
-					log.Debug("byTag:", byTag)
-					srcFieldVal = from.FieldByName(byTag)
-				} else {
-					log.Debug("byName:", dstFieldMeta.Name)
-					srcFieldVal = from.FieldByName(dstFieldMeta.Name)
-				}
-				if srcFieldVal.IsValid() {
-					copy(srcFieldVal, dstFieldVal)
-				}
-			}
+		if from.Type().ConvertibleTo(to.Type()) {
+			to.Set(from.Convert(to.Type()))
+			return nil
 		}
-	case reflect.Slice:
-		dstSliceLen := to.Len()
 
-		if from.Type().Kind() == reflect.Slice {
-			srcSliceLen := from.Len()
-			for i := 0; i < srcSliceLen; i++ {
-				srcElemVal := from.Index(i)
-				if i < dstSliceLen {
-					dstElemVal := to.Index(i)
-					copy(srcElemVal, dstElemVal)
-				} else {
-					log.Debug("dstSlice not enough cap")
-					to.Set(reflect.Append(to, reflect.Zero(to.Type().Elem())))
-					dstElemVal := to.Index(i)
-					copy(srcElemVal, dstElemVal)
-				}
-			}
-		}
-	case reflect.Map:
-		log.Debug("map-to-val:", to)
-		dstKeyType := to.Type().Key()
-		if from.Type().Kind() == reflect.Map {
-			srcKeyType := from.Type().Key()
+		switch to.Type().Kind() {
+		case reflect.Struct:
+			for _, dstFieldMeta := range deepFields(to.Type()) {
+				dstFieldVal := to.FieldByName(dstFieldMeta.Name)
 
-			convert := srcKeyType.ConvertibleTo(dstKeyType)
-			assign := srcKeyType.AssignableTo(dstKeyType)
+				log.Debug("struct:field:", dstFieldMeta.Name, ":", dstFieldMeta.Anonymous)
 
-			for _, srcElemKey := range from.MapKeys() {
-				srcElemVal := from.MapIndex(srcElemKey)
-
-				// var dstElemVal reflect.Value
-				if assign {
-					log.Debug("assign:", srcElemKey)
-					init := reflect.New(to.Type().Elem())
-					copy(srcElemVal, init)
-					to.SetMapIndex(srcElemKey, init.Elem())
-				} else if convert {
-					log.Debug("convert:", srcElemKey)
-					init := reflect.New(to.Type().Elem())
-					copy(srcElemVal, init)
-					to.SetMapIndex(srcElemKey.Convert(dstKeyType), init.Elem())
-				} else {
+				if !dstFieldVal.CanSet() {
 					return nil
 				}
+
+				if from.Type().Kind() == reflect.Struct {
+					var srcFieldVal reflect.Value
+					if byTag := dstFieldMeta.Tag.Get("copi"); byTag != "" {
+						log.Debug("byTag:", byTag)
+						srcFieldVal = from.FieldByName(byTag)
+					} else {
+						log.Debug("byName:", dstFieldMeta.Name)
+						srcFieldVal = from.FieldByName(dstFieldMeta.Name)
+					}
+					if srcFieldVal.IsValid() {
+						copy(srcFieldVal, dstFieldVal)
+					}
+				}
 			}
+		case reflect.Slice:
+			dstSliceLen := to.Len()
+
+			if from.Type().Kind() == reflect.Slice {
+				srcSliceLen := from.Len()
+				for i := 0; i < srcSliceLen; i++ {
+					srcElemVal := from.Index(i)
+					if i < dstSliceLen {
+						dstElemVal := to.Index(i)
+						copy(srcElemVal, dstElemVal)
+					} else {
+						log.Debug("dstSlice not enough cap")
+						to.Set(reflect.Append(to, reflect.Zero(to.Type().Elem())))
+						dstElemVal := to.Index(i)
+						copy(srcElemVal, dstElemVal)
+					}
+				}
+			}
+		case reflect.Map:
+			log.Debug("map-to-val:", to)
+			dstKeyType := to.Type().Key()
+			if from.Type().Kind() == reflect.Map {
+				srcKeyType := from.Type().Key()
+
+				convert := srcKeyType.ConvertibleTo(dstKeyType)
+				assign := srcKeyType.AssignableTo(dstKeyType)
+
+				for _, srcElemKey := range from.MapKeys() {
+					srcElemVal := from.MapIndex(srcElemKey)
+
+					// var dstElemVal reflect.Value
+					if assign {
+						log.Debug("assign:", srcElemKey)
+						init := reflect.New(to.Type().Elem())
+						copy(srcElemVal, init)
+						to.SetMapIndex(srcElemKey, init.Elem())
+					} else if convert {
+						log.Debug("convert:", srcElemKey)
+						init := reflect.New(to.Type().Elem())
+						copy(srcElemVal, init)
+						to.SetMapIndex(srcElemKey.Convert(dstKeyType), init.Elem())
+					} else {
+						return nil
+					}
+				}
+			}
+		default:
 		}
-	default:
 	}
 
 	return nil
