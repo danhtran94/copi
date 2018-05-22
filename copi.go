@@ -24,6 +24,7 @@ func Dup(from interface{}, to interface{}) error {
 func initNilValue(v reflect.Value) {
 	if v.IsNil() {
 		init := reflect.New(v.Type().Elem())
+		log.Debug("init: ", init)
 		init.Elem().Set(reflect.Zero(init.Elem().Type()))
 		v.Set(init)
 	}
@@ -35,9 +36,11 @@ func copy(from, to reflect.Value) error {
 		return copy(reflect.Indirect(from), reflect.Indirect(to))
 	}
 
-	if from.Type().AssignableTo(to.Type()) {
-		to.Set(from)
-		return nil
+	if to.CanSet() {
+		if from.Type().AssignableTo(to.Type()) {
+			to.Set(from)
+			return nil
+		}
 	}
 
 	if from.Type().ConvertibleTo(to.Type()) {
