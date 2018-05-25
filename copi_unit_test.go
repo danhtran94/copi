@@ -102,7 +102,9 @@ func TestBasicType(t *testing.T) {
 }
 
 func TestStruct(t *testing.T) {
+	copi.Debugging()
 	t.Run("Simple struct with basic type", func(t *testing.T) {
+		// t.Skip()
 		type Source struct {
 			Num   int
 			Text  string
@@ -148,6 +150,7 @@ func TestStruct(t *testing.T) {
 	})
 
 	t.Run("Simple struct with basic type dest has pointer", func(t *testing.T) {
+		// t.Skip()
 		ptrNum := new(int)
 		*ptrNum = 10
 		ptrText := new(string)
@@ -201,6 +204,7 @@ func TestStruct(t *testing.T) {
 	})
 
 	t.Run("Simple struct with basic type dest has interface{}", func(t *testing.T) {
+		// t.Skip()
 		ptrNum := new(int)
 		*ptrNum = 10
 		ptrQuest := new(bool)
@@ -237,6 +241,57 @@ func TestStruct(t *testing.T) {
 				},
 				Expect: Dest{
 					Num:   ptrNum,
+					Text:  "sample",
+					Quest: ptrQuest,
+					Point: ptrPoint,
+					Dummy: "foobar",
+				},
+			},
+		}
+		for _, tt := range ts {
+			err := copi.Dup(tt.Source, &tt.Dest)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.Expect, tt.Dest)
+		}
+	})
+
+	t.Run("Simple struct with basic type src has nil value", func(t *testing.T) {
+		ptrNum := new(int)
+		*ptrNum = 10
+		ptrQuest := new(bool)
+		*ptrQuest = true
+		ptrPoint := new(float32)
+		*ptrPoint = 3.14
+		type Source struct {
+			Num   *int
+			Text  string
+			Quest bool
+			Point float32
+		}
+		type Dest struct {
+			Num   int
+			Text  interface{}
+			Quest *bool
+			Point *float32
+			Dummy string
+		}
+		ts := []struct {
+			Source Source
+			Dest   Dest
+			Expect Dest
+		}{
+			{
+				Source: Source{
+					Num:   nil,
+					Text:  "sample",
+					Quest: *ptrQuest,
+					Point: *ptrPoint,
+				},
+				Dest: Dest{
+					Dummy: "foobar",
+				},
+				Expect: Dest{
+					Num:   0,
 					Text:  "sample",
 					Quest: ptrQuest,
 					Point: ptrPoint,

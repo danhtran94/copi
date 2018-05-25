@@ -22,7 +22,7 @@ func Dup(from interface{}, to interface{}) error {
 }
 
 func initNilValue(v reflect.Value) {
-	if v.IsNil() {
+	if v.Kind() == reflect.Ptr && v.IsNil() {
 		init := reflect.New(v.Type().Elem())
 		log.Debug("init: ", init)
 		init.Elem().Set(reflect.Zero(init.Elem().Type()))
@@ -32,11 +32,18 @@ func initNilValue(v reflect.Value) {
 
 func copy(from, to reflect.Value) error {
 	if from.Kind() == reflect.Ptr || to.Kind() == reflect.Ptr {
+		log.Debug(from, to)
 		initNilValue(to)
 		return copy(reflect.Indirect(from), reflect.Indirect(to))
 	}
 
 	if to.CanSet() {
+		if from.Kind() == reflect.Invalid {
+			log.Debug(from)
+			to.Set(reflect.Zero(to.Type()))
+			return nil
+		}
+
 		if from.Type().AssignableTo(to.Type()) {
 			to.Set(from)
 			return nil
@@ -101,8 +108,6 @@ func copy(from, to reflect.Value) error {
 
 				for _, srcElemKey := range from.MapKeys() {
 					srcElemVal := from.MapIndex(srcElemKey)
-
-					// var dstElemVal reflect.Value
 					if assign {
 						log.Debug("assign:", srcElemKey)
 						init := reflect.New(to.Type().Elem())
