@@ -24,22 +24,23 @@ func Dup(from interface{}, to interface{}) error {
 func initNilValue(v reflect.Value) {
 	if v.Kind() == reflect.Ptr && v.IsNil() {
 		init := reflect.New(v.Type().Elem())
-		log.Debug("init: ", init)
+		log.Debug("init: ", v.Type().Elem(), init, " for ", v)
 		init.Elem().Set(reflect.Zero(init.Elem().Type()))
 		v.Set(init)
+		log.Debug("init-done: ", v)
 	}
 }
 
 func copy(from, to reflect.Value) error {
 	if from.Kind() == reflect.Ptr || to.Kind() == reflect.Ptr {
-		log.Debug(from, to)
+		log.Debug("duping: ", from.Kind(), from, to.Kind(), to)
 		initNilValue(to)
 		return copy(reflect.Indirect(from), reflect.Indirect(to))
 	}
 
 	if to.CanSet() {
 		if from.Kind() == reflect.Invalid {
-			log.Debug(from)
+			log.Debug("from invalid: ", from)
 			to.Set(reflect.Zero(to.Type()))
 			return nil
 		}
@@ -94,11 +95,16 @@ func copy(from, to reflect.Value) error {
 						to.Set(reflect.Append(to, reflect.Zero(to.Type().Elem())))
 						dstElemVal := to.Index(i)
 						copy(srcElemVal, dstElemVal)
+						log.Debug("len after append: ", to.Len())
 					}
 				}
 			}
 		case reflect.Map:
-			log.Debug("map-to-val:", to)
+			log.Debug("to: ", to.Kind(), " is Nill ", to.IsNil())
+			if to.IsNil() {
+				to.Set(reflect.MakeMap(to.Type()))
+			}
+
 			dstKeyType := to.Type().Key()
 			if from.Type().Kind() == reflect.Map {
 				srcKeyType := from.Type().Key()
@@ -109,12 +115,12 @@ func copy(from, to reflect.Value) error {
 				for _, srcElemKey := range from.MapKeys() {
 					srcElemVal := from.MapIndex(srcElemKey)
 					if assign {
-						log.Debug("assign:", srcElemKey)
+						log.Debug("assign: ", srcElemKey)
 						init := reflect.New(to.Type().Elem())
 						copy(srcElemVal, init)
 						to.SetMapIndex(srcElemKey, init.Elem())
 					} else if convert {
-						log.Debug("convert:", srcElemKey)
+						log.Debug("convert: ", srcElemKey)
 						init := reflect.New(to.Type().Elem())
 						copy(srcElemVal, init)
 						to.SetMapIndex(srcElemKey.Convert(dstKeyType), init.Elem())
