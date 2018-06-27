@@ -63,7 +63,7 @@ func copy(from, to reflect.Value) error {
 				log.Debug("struct:field:", dstFieldMeta.Name, ":", dstFieldMeta.Anonymous)
 
 				if !dstFieldVal.CanSet() {
-					return nil
+					continue
 				}
 
 				if from.Type().Kind() == reflect.Struct {
