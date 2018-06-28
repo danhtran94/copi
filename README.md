@@ -2,6 +2,9 @@
 # Copi
 A super deep copy tool that help move values from struct to another struct with optional tags
 
+## Dependencies
+dep ensure -v
+
 ## Current State: alpha
 Please don't use this lib in any production product
 
