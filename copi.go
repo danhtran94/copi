@@ -1,6 +1,9 @@
 package copi
 
 import (
+	"database/sql"
+	"database/sql/driver"
+	"fmt"
 	"reflect"
 
 	logrus "github.com/sirupsen/logrus"
@@ -19,6 +22,10 @@ func Debugging() {
 
 func Dup(from interface{}, to interface{}) error {
 	return copy(reflect.ValueOf(from), reflect.ValueOf(to))
+}
+
+func copiError(err error) error {
+	return fmt.Errorf("copi: %s", err)
 }
 
 func initNilValue(v reflect.Value) {
@@ -55,6 +62,24 @@ func copy(from, to reflect.Value) error {
 			return nil
 		}
 
+		if val, ok := from.Interface().(driver.Valuer); ok {
+			val, err := val.Value()
+			if err != nil {
+				return copiError(err)
+			}
+			return copy(reflect.ValueOf(val), to)
+		}
+
+		if to.CanAddr() {
+			if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+				err := scanner.Scan(from.Interface())
+				if err != nil {
+					return copiError(err)
+				}
+				return nil
+			}
+		}
+
 		switch to.Type().Kind() {
 		case reflect.Struct:
 			for _, dstFieldMeta := range deepFields(to.Type()) {
@@ -63,7 +88,7 @@ func copy(from, to reflect.Value) error {
 				log.Debug("struct:field:", dstFieldMeta.Name, ":", dstFieldMeta.Anonymous)
 
 				if !dstFieldVal.CanSet() {
-					continue
+					return nil
 				}
 
 				if from.Type().Kind() == reflect.Struct {
