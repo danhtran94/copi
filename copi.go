@@ -80,6 +80,8 @@ func copy(from, to reflect.Value) error {
 			}
 		}
 
+		srcTags := scanTags(from.Type())
+
 		switch to.Type().Kind() {
 		case reflect.Struct:
 			for _, dstFieldMeta := range deepFields(to.Type()) {
@@ -96,6 +98,9 @@ func copy(from, to reflect.Value) error {
 					if byTag := dstFieldMeta.Tag.Get("copi"); byTag != "" {
 						log.Debug("byTag:", byTag)
 						srcFieldVal = from.FieldByName(byTag)
+					} else if srcFieldName, avail := srcTags[dstFieldMeta.Name]; avail {
+						log.Debug("bySrcTag:", srcFieldName)
+						srcFieldVal = from.FieldByName(srcFieldName)
 					} else {
 						log.Debug("byName:", dstFieldMeta.Name)
 						srcFieldVal = from.FieldByName(dstFieldMeta.Name)
@@ -159,6 +164,21 @@ func copy(from, to reflect.Value) error {
 	}
 
 	return nil
+}
+
+func scanTags(reflectType reflect.Type) map[string]string {
+	srcTags := map[string]string{}
+
+	if reflectType = indirectType(reflectType); reflectType.Kind() == reflect.Struct {
+		for i := 0; i < reflectType.NumField(); i++ {
+			v := reflectType.Field(i)
+			if tag := v.Tag.Get("copi-to"); tag != "" {
+				srcTags[tag] = v.Name
+			}
+		}
+	}
+
+	return srcTags
 }
 
 func deepFields(reflectType reflect.Type) []reflect.StructField {

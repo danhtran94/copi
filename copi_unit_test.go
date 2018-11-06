@@ -262,18 +262,21 @@ func TestStruct(t *testing.T) {
 		*ptrQuest = true
 		ptrPoint := new(float32)
 		*ptrPoint = 3.14
+
 		type Source struct {
-			Num   *int
-			Text  string
-			Quest bool
-			Point float32
+			Num     *int
+			Text    string
+			Quest   bool
+			Point   float32
+			AnyTag1 string `copi-to:"AnyTag2"`
 		}
 		type Dest struct {
-			Num   int
-			Text  interface{}
-			Quest *bool
-			Point *float32
-			Dummy string
+			Num     int
+			Text    interface{}
+			Quest   *bool
+			Point   *float32
+			Dummy   string
+			AnyTag2 string
 		}
 		ts := []struct {
 			Source Source
@@ -282,20 +285,22 @@ func TestStruct(t *testing.T) {
 		}{
 			{
 				Source: Source{
-					Num:   nil,
-					Text:  "sample",
-					Quest: *ptrQuest,
-					Point: *ptrPoint,
+					Num:     nil,
+					Text:    "sample",
+					Quest:   *ptrQuest,
+					Point:   *ptrPoint,
+					AnyTag1: "abcabc",
 				},
 				Dest: Dest{
 					Dummy: "foobar",
 				},
 				Expect: Dest{
-					Num:   0,
-					Text:  "sample",
-					Quest: ptrQuest,
-					Point: ptrPoint,
-					Dummy: "foobar",
+					Num:     0,
+					Text:    "sample",
+					Quest:   ptrQuest,
+					Point:   ptrPoint,
+					Dummy:   "foobar",
+					AnyTag2: "abcabc",
 				},
 			},
 		}
