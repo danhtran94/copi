@@ -41,6 +41,9 @@ func initNilValue(v reflect.Value) {
 func copy(from, to reflect.Value) error {
 	if from.Kind() == reflect.Ptr || to.Kind() == reflect.Ptr {
 		log.Debug("duping: ", from.Kind(), from, to.Kind(), to)
+		if from.Kind() == reflect.Ptr && from.IsNil() {
+			return nil
+		}
 		initNilValue(to)
 		return copy(reflect.Indirect(from), reflect.Indirect(to))
 	}

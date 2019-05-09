@@ -3,6 +3,7 @@ package copi_test
 import (
 	"reflect"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 
@@ -305,6 +306,63 @@ func TestStruct(t *testing.T) {
 			},
 		}
 		for _, tt := range ts {
+			err := copi.Dup(tt.Source, &tt.Dest)
+			assert.NoError(t, err)
+			assert.Equal(t, tt.Expect, tt.Dest)
+		}
+	})
+
+	t.Run("Simple struct with basic type src has nil value to nil", func(t *testing.T) {
+		ptrNum := new(time.Time)
+		*ptrNum = time.Now()
+		ptrQuest := new(bool)
+		*ptrQuest = true
+		ptrPoint := new(float32)
+		*ptrPoint = 3.14
+
+		type Source struct {
+			Num     *time.Time
+			Text    string
+			Quest   bool
+			Point   float32
+			AnyTag1 string `copi-to:"AnyTag2"`
+		}
+		type Dest struct {
+			Num     *time.Time
+			Text    interface{}
+			Quest   *bool
+			Point   *float32
+			Dummy   string
+			AnyTag2 string
+		}
+		ts := []struct {
+			Source Source
+			Dest   Dest
+			Expect Dest
+		}{
+			{
+				Source: Source{
+					Num:     nil,
+					Text:    "sample",
+					Quest:   *ptrQuest,
+					Point:   *ptrPoint,
+					AnyTag1: "abcabc",
+				},
+				Dest: Dest{
+					Dummy: "foobar",
+				},
+				Expect: Dest{
+					Num:     nil,
+					Text:    "sample",
+					Quest:   ptrQuest,
+					Point:   ptrPoint,
+					Dummy:   "foobar",
+					AnyTag2: "abcabc",
+				},
+			},
+		}
+		for _, tt := range ts {
+			copi.Debugging()
 			err := copi.Dup(tt.Source, &tt.Dest)
 			assert.NoError(t, err)
 			assert.Equal(t, tt.Expect, tt.Dest)
