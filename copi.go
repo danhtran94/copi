@@ -118,6 +118,11 @@ func copy(from, to reflect.Value) error {
 
 			if from.Type().Kind() == reflect.Slice {
 				srcSliceLen := from.Len()
+
+				if !from.IsNil() && to.IsNil() {
+					to.Set(reflect.MakeSlice(to.Type(), 0, 0))
+				}
+
 				for i := 0; i < srcSliceLen; i++ {
 					srcElemVal := from.Index(i)
 					if i < dstSliceLen {
