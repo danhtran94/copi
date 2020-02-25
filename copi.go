@@ -5,52 +5,49 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"reflect"
-
-	logrus "github.com/sirupsen/logrus"
 )
 
-var log *logrus.Logger
-
-func init() {
-	log = logrus.New()
-	log.SetLevel(logrus.InfoLevel)
-}
-
-func Debugging() {
-	log.SetLevel(logrus.DebugLevel)
+type Option struct {
+	ScanDB bool
 }
 
 func Dup(from interface{}, to interface{}) error {
-	return copy(reflect.ValueOf(from), reflect.ValueOf(to))
+	defaultOpt := Option{
+		ScanDB: false,
+	}
+
+	return DupWithOpt(from, to, defaultOpt)
+	// return copy(reflect.ValueOf(from), reflect.ValueOf(to), defaultOpt)
+}
+
+func DupWithOpt(from interface{}, to interface{}, opt Option) error {
+	return copy(reflect.ValueOf(from), reflect.ValueOf(to), opt)
 }
 
 func copiError(err error) error {
 	return fmt.Errorf("copi: %s", err)
 }
 
+// initNilValue initial poiter value if it nil
 func initNilValue(v reflect.Value) {
 	if v.Kind() == reflect.Ptr && v.IsNil() {
 		init := reflect.New(v.Type().Elem())
-		log.Debug("init: ", v.Type().Elem(), init, " for ", v)
 		init.Elem().Set(reflect.Zero(init.Elem().Type()))
 		v.Set(init)
-		log.Debug("init-done: ", v)
 	}
 }
 
-func copy(from, to reflect.Value) error {
+func copy(from, to reflect.Value, opt Option) error {
 	if from.Kind() == reflect.Ptr || to.Kind() == reflect.Ptr {
-		log.Debug("duping: ", from.Kind(), from, to.Kind(), to)
 		if from.Kind() == reflect.Ptr && from.IsNil() {
 			return nil
 		}
 		initNilValue(to)
-		return copy(reflect.Indirect(from), reflect.Indirect(to))
+		return copy(reflect.Indirect(from), reflect.Indirect(to), opt)
 	}
 
 	if to.CanSet() {
 		if from.Kind() == reflect.Invalid {
-			log.Debug("from invalid: ", from)
 			to.Set(reflect.Zero(to.Type()))
 			return nil
 		}
@@ -70,10 +67,10 @@ func copy(from, to reflect.Value) error {
 			if err != nil {
 				return copiError(err)
 			}
-			return copy(reflect.ValueOf(val), to)
+			return copy(reflect.ValueOf(val), to, opt)
 		}
 
-		if to.CanAddr() {
+		if to.CanAddr() && opt.ScanDB {
 			if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
 				err := scanner.Scan(from.Interface())
 				if err != nil {
@@ -90,8 +87,6 @@ func copy(from, to reflect.Value) error {
 			for _, dstFieldMeta := range deepFields(to.Type()) {
 				dstFieldVal := to.FieldByName(dstFieldMeta.Name)
 
-				log.Debug("struct:field:", dstFieldMeta.Name, ":", dstFieldMeta.Anonymous)
-
 				if !dstFieldVal.CanSet() {
 					return nil
 				}
@@ -99,17 +94,14 @@ func copy(from, to reflect.Value) error {
 				if from.Type().Kind() == reflect.Struct {
 					var srcFieldVal reflect.Value
 					if byTag := dstFieldMeta.Tag.Get("copi"); byTag != "" {
-						log.Debug("byTag:", byTag)
 						srcFieldVal = from.FieldByName(byTag)
 					} else if srcFieldName, avail := srcTags[dstFieldMeta.Name]; avail {
-						log.Debug("bySrcTag:", srcFieldName)
 						srcFieldVal = from.FieldByName(srcFieldName)
 					} else {
-						log.Debug("byName:", dstFieldMeta.Name)
 						srcFieldVal = from.FieldByName(dstFieldMeta.Name)
 					}
 					if srcFieldVal.IsValid() {
-						copy(srcFieldVal, dstFieldVal)
+						copy(srcFieldVal, dstFieldVal, opt)
 					}
 				}
 			}
@@ -127,18 +119,15 @@ func copy(from, to reflect.Value) error {
 					srcElemVal := from.Index(i)
 					if i < dstSliceLen {
 						dstElemVal := to.Index(i)
-						copy(srcElemVal, dstElemVal)
+						copy(srcElemVal, dstElemVal, opt)
 					} else {
-						log.Debug("dstSlice not enough cap")
 						to.Set(reflect.Append(to, reflect.Zero(to.Type().Elem())))
 						dstElemVal := to.Index(i)
-						copy(srcElemVal, dstElemVal)
-						log.Debug("len after append: ", to.Len())
+						copy(srcElemVal, dstElemVal, opt)
 					}
 				}
 			}
 		case reflect.Map:
-			log.Debug("to: ", to.Kind(), " is Nill ", to.IsNil())
 			if to.IsNil() {
 				to.Set(reflect.MakeMap(to.Type()))
 			}
@@ -153,14 +142,12 @@ func copy(from, to reflect.Value) error {
 				for _, srcElemKey := range from.MapKeys() {
 					srcElemVal := from.MapIndex(srcElemKey)
 					if assign {
-						log.Debug("assign: ", srcElemKey)
 						init := reflect.New(to.Type().Elem())
-						copy(srcElemVal, init)
+						copy(srcElemVal, init, opt)
 						to.SetMapIndex(srcElemKey, init.Elem())
 					} else if convert {
-						log.Debug("convert: ", srcElemKey)
 						init := reflect.New(to.Type().Elem())
-						copy(srcElemVal, init)
+						copy(srcElemVal, init, opt)
 						to.SetMapIndex(srcElemKey.Convert(dstKeyType), init.Elem())
 					} else {
 						return nil

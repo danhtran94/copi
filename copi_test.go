@@ -44,7 +44,7 @@ type EmB struct {
 }
 
 func TestDup(t *testing.T) {
-	copi.Debugging()
+	// copi.Debugging()
 
 	s := ""
 	ss := &s
