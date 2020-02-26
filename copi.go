@@ -8,12 +8,14 @@ import (
 )
 
 type Option struct {
-	ScanDB bool
+	SQLScanner   bool
+	DriverValuer bool
 }
 
 func Dup(from interface{}, to interface{}) error {
 	defaultOpt := Option{
-		ScanDB: false,
+		SQLScanner:   false,
+		DriverValuer: false,
 	}
 
 	return DupWithOpt(from, to, defaultOpt)
@@ -62,7 +64,7 @@ func copy(from, to reflect.Value, opt Option) error {
 			return nil
 		}
 
-		if val, ok := from.Interface().(driver.Valuer); ok {
+		if val, ok := from.Interface().(driver.Valuer); ok && opt.DriverValuer {
 			val, err := val.Value()
 			if err != nil {
 				return copiError(err)
@@ -70,8 +72,8 @@ func copy(from, to reflect.Value, opt Option) error {
 			return copy(reflect.ValueOf(val), to, opt)
 		}
 
-		if to.CanAddr() && opt.ScanDB {
-			if scanner, ok := to.Addr().Interface().(sql.Scanner); ok {
+		if to.CanAddr() {
+			if scanner, ok := to.Addr().Interface().(sql.Scanner); ok && opt.SQLScanner {
 				err := scanner.Scan(from.Interface())
 				if err != nil {
 					return copiError(err)
